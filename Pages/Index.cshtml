@@ -1,0 +1,123 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Оптимизация раскроя";
+}
+
+<div class="container mt-4">
+    <h1>Оптимизация раскроя стальных заготовок</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Параметры заготовки</h5>
+                    <form id="optimizationForm">
+                        <div class="mb-3">
+                            <label for="billetLength" class="form-label">Длина заготовки (мм)</label>
+                            <input type="number" class="form-control" id="billetLength" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="billetWidth" class="form-label">Ширина заготовки (мм)</label>
+                            <input type="number" class="form-control" id="billetWidth" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="billetThickness" class="form-label">Толщина заготовки (мм)</label>
+                            <input type="number" class="form-control" id="billetThickness" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="steelGrade" class="form-label">Марка стали</label>
+                            <input type="text" class="form-control" id="steelGrade" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="costPerUnit" class="form-label">Стоимость за единицу</label>
+                            <input type="number" class="form-control" id="costPerUnit" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="requiredLength" class="form-label">Требуемая длина детали (мм)</label>
+                            <input type="number" class="form-control" id="requiredLength" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="requiredWidth" class="form-label">Требуемая ширина детали (мм)</label>
+                            <input type="number" class="form-control" id="requiredWidth" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Рассчитать</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Результаты оптимизации</h5>
+                    <div id="results" style="display: none;">
+                        <p><strong>Полезная площадь:</strong> <span id="usefulArea"></span> мм²</p>
+                        <p><strong>Площадь отходов:</strong> <span id="wasteArea"></span> мм²</p>
+                        <p><strong>Процент отходов:</strong> <span id="wastePercentage"></span>%</p>
+                        <p><strong>Схема раскроя:</strong> <span id="cuttingPattern"></span></p>
+                        <button id="exportButton" class="btn btn-success">Экспорт в Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('optimizationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                billetLength: parseFloat(document.getElementById('billetLength').value),
+                billetWidth: parseFloat(document.getElementById('billetWidth').value),
+                billetThickness: parseFloat(document.getElementById('billetThickness').value),
+                steelGrade: document.getElementById('steelGrade').value,
+                costPerUnit: parseFloat(document.getElementById('costPerUnit').value),
+                requiredLength: parseFloat(document.getElementById('requiredLength').value),
+                requiredWidth: parseFloat(document.getElementById('requiredWidth').value)
+            };
+            
+            try {
+                const response = await fetch('/api/cutting/optimize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('usefulArea').textContent = result.usefulArea.toFixed(2);
+                document.getElementById('wasteArea').textContent = result.wasteArea.toFixed(2);
+                document.getElementById('wastePercentage').textContent = result.wastePercentage.toFixed(2);
+                document.getElementById('cuttingPattern').textContent = result.cuttingPattern;
+                document.getElementById('results').style.display = 'block';
+                
+            } catch (error) {
+                alert('Произошла ошибка при расчете оптимизации');
+                console.error(error);
+            }
+        });
+        
+        document.getElementById('exportButton').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/cutting/export/1');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cutting_optimization.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert('Произошла ошибка при экспорте в Excel');
+                console.error(error);
+            }
+        });
+    </script>
+}
